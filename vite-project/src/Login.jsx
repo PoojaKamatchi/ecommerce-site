@@ -10,7 +10,7 @@ export default function Login() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    role: "buyer", // Default role
+    role: "buyer",
   });
 
   const [loading, setLoading] = useState(false);
@@ -24,7 +24,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const endpoint = "http://localhost:5000/api/users/login";
+      const endpoint = `${import.meta.env.VITE_API_URL}/api/users/login`;
 
       const res = await fetch(endpoint, {
         method: "POST",
@@ -39,7 +39,7 @@ export default function Login() {
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem("token", data.token);
+        localStorage.setItem("authToken", data.token);
         localStorage.setItem("role", form.role);
 
         toast.success("✅ Login successful!");
@@ -100,7 +100,6 @@ export default function Login() {
               required
             />
 
-            {/* Role selection */}
             <select
               name="role"
               value={form.role}

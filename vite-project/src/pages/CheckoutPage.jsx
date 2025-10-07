@@ -1,3 +1,4 @@
+// src/pages/CheckoutPage.jsx
 import React, { useState, useEffect } from "react";
 import { useCart } from "../CartContext";
 import { useNavigate } from "react-router-dom";
@@ -8,11 +9,11 @@ export default function CheckoutPage() {
   const navigate = useNavigate();
 
   const [address, setAddress] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cod"); // default COD
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("authToken"); // fixed key
     if (!token) {
       alert("⚠️ Please login to proceed with checkout.");
       navigate("/login", { replace: true });
@@ -27,10 +28,10 @@ export default function CheckoutPage() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("authToken");
 
       const response = await axios.post(
-        "http://localhost:5000/api/orders",
+        `${import.meta.env.VITE_API_URL}/api/orders`,
         {
           items: cartItems.map((item) => ({
             productId: item.product?._id,
@@ -71,7 +72,6 @@ export default function CheckoutPage() {
       <div className="max-w-3xl mx-auto bg-white shadow-lg rounded-lg p-6">
         <h2 className="text-3xl font-bold text-center mb-6">🛒 Checkout</h2>
 
-        {/* Order Summary */}
         <div className="mb-6">
           <h3 className="text-xl font-bold mb-3">Order Summary</h3>
           <ul>
@@ -90,7 +90,6 @@ export default function CheckoutPage() {
           <p className="font-bold text-lg mt-4">Total: ₹{totalPrice}</p>
         </div>
 
-        {/* Address Form */}
         <div className="mb-6">
           <h3 className="font-bold mb-2">Delivery Address</h3>
           <textarea
@@ -102,7 +101,6 @@ export default function CheckoutPage() {
           />
         </div>
 
-        {/* Payment Method */}
         <div className="mb-6">
           <h3 className="font-bold mb-2">Payment Method</h3>
           <div className="flex gap-6">
@@ -129,7 +127,6 @@ export default function CheckoutPage() {
           </div>
         </div>
 
-        {/* Confirm Order */}
         <div className="text-center">
           <button
             onClick={handleConfirmOrder}
