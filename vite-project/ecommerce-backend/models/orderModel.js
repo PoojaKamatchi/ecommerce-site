@@ -4,23 +4,28 @@ const orderSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true,
       ref: "User",
+      required: true,
     },
-    items: [
+    name: { type: String, required: true },
+    mobile: { type: String, required: true },
+    orderItems: [
       {
-        productId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Product",
-          required: true,
-        },
-        quantity: { type: Number, required: true },
-        price: { type: Number, required: true },
+        productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+        name: String,
+        price: Number,
+        quantity: Number,
       },
     ],
-    totalPrice: { type: Number, required: true },
-    address: { type: String, required: true },
-    paymentMethod: { type: String, required: true },
+    shippingAddress: { type: String, required: true },
+    paymentMethod: { type: String, default: "Cash on Delivery" },
+    shippingCharge: { type: Number, default: 0 },
+    totalAmount: { type: Number, required: true },
+    status: {
+      type: String,
+      enum: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
+      default: "Pending",
+    },
   },
   { timestamps: true }
 );
