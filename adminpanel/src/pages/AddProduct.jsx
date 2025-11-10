@@ -28,7 +28,7 @@ const AddProduct = ({ onProductAdded }) => {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/category");
+      const res = await axios.get("http://localhost:5000/api/auth/admin/category");
       setCategories(res.data);
     } catch (err) {
       toast.error("⚠️ Failed to fetch categories!");
@@ -73,7 +73,7 @@ const AddProduct = ({ onProductAdded }) => {
       if (form.imageFile) formData.append("image", form.imageFile); // must match backend field name
       else formData.append("imageUrl", form.imageUrl);
 
-      await axios.post("http://localhost:5000/api/admin/products", formData, {
+      await axios.post("http://localhost:5000/api/auth/admin/products", formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

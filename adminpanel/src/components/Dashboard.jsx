@@ -8,13 +8,14 @@ const Dashboard = () => {
     { title: "Orders", description: "Track recent orders", path: "/admin/orders", icon: "📦", color: "from-yellow-400 to-orange-500" },
     { title: "Users", description: "See customer details", path: "/admin/users", icon: "👥", color: "from-pink-500 to-rose-600" },
     { title: "Reports", description: "View sales analytics", path: "/admin/reports", icon: "📊", color: "from-red-500 to-rose-600" },
+    { title: "Add Admin", description: "Add a new admin", path: "/admin/add-admin", icon: "👤➕", color: "from-purple-500 to-pink-500" },
   ];
 
   return (
-    <div className="p-6 min-h-screen bg-gray-100">
+    <div className="p-6 min-h-screen bg-gray-100 lg:ml-64">
       <h1 className="text-3xl font-bold text-gray-800 mb-8 text-center">Admin Dashboard</h1>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
         {cards.map((card, index) => (
           <Link
             to={card.path}
