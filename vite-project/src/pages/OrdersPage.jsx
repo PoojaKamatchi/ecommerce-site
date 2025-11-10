@@ -14,16 +14,11 @@ export default function OrdersPage() {
       try {
         const token = localStorage.getItem("authToken");
         const res = await axios.get(`${API_URL}/api/orders/user`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (res.data && Array.isArray(res.data)) {
-          setOrders(res.data.reverse());
-        } else {
-          toast.warn("No orders found.");
-        }
+        if (Array.isArray(res.data)) setOrders(res.data);
+        else toast.warn("No orders found.");
       } catch (error) {
         console.error("Fetch Orders Error:", error);
         toast.error("Failed to load your orders.");
@@ -35,15 +30,34 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  if (loading) {
+  const handleCancelOrder = async (orderId) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      await axios.put(
+        `${API_URL}/api/orders/${orderId}/cancel`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      toast.success("Order cancelled successfully!");
+      setOrders((prev) =>
+        prev.map((o) =>
+          o._id === orderId ? { ...o, status: "Cancelled" } : o
+        )
+      );
+    } catch (error) {
+      console.error("Cancel Order Error:", error);
+      toast.error("Failed to cancel order.");
+    }
+  };
+
+  if (loading)
     return (
       <div className="flex items-center justify-center h-screen text-indigo-600 text-lg font-semibold">
         Loading your orders...
       </div>
     );
-  }
 
-  if (!orders.length) {
+  if (!orders.length)
     return (
       <div className="flex flex-col items-center justify-center h-screen text-gray-700">
         <p className="mb-4 text-lg">No orders yet. Start shopping now!</p>
@@ -55,7 +69,6 @@ export default function OrdersPage() {
         </a>
       </div>
     );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-10 px-4 md:px-16">
@@ -78,6 +91,8 @@ export default function OrdersPage() {
                 className={`px-3 py-1 rounded-lg text-sm font-medium ${
                   order.status === "Delivered"
                     ? "bg-green-100 text-green-700"
+                    : order.status === "Cancelled"
+                    ? "bg-red-100 text-red-700"
                     : "bg-yellow-100 text-yellow-700"
                 }`}
               >
@@ -92,17 +107,17 @@ export default function OrdersPage() {
               <strong>Mobile:</strong> {order.mobile}
             </p>
             <p className="text-gray-600 mb-3">
-              <strong>Address:</strong> {order.address}
+              <strong>Address:</strong> {order.shippingAddress}
             </p>
 
             <div className="border-t border-gray-200 mt-3 pt-3">
               <h3 className="text-lg font-medium text-gray-800 mb-2">Items:</h3>
-              {order.items?.map((item, i) => (
+              {order.orderItems?.map((item, i) => (
                 <div
                   key={i}
                   className="flex justify-between text-gray-700 border-b border-gray-100 py-1"
                 >
-                  <span>{item.product?.name?.en || "Unnamed Product"}</span>
+                  <span>{item.product?.name || "Unnamed Product"}</span>
                   <span>
                     ₹ {item.price} × {item.quantity}
                   </span>
@@ -138,6 +153,15 @@ export default function OrdersPage() {
                 {new Date(order.createdAt).toLocaleString()}
               </span>
             </div>
+
+            {order.status === "Processing" && (
+              <button
+                onClick={() => handleCancelOrder(order._id)}
+                className="mt-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition"
+              >
+                Cancel Order
+              </button>
+            )}
           </div>
         ))}
       </div>
