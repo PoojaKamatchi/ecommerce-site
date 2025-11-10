@@ -1,4 +1,3 @@
-// src/components/Navbar.jsx
 import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useCart } from "./CartContext.jsx";
@@ -19,12 +18,12 @@ export default function Navbar() {
 
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-  // 🌟 Fetch cart count on load
+  // Fetch cart count on load
   useEffect(() => {
     fetchCart();
   }, []);
 
-  // 🌟 Wishlist count updates automatically
+  // Update wishlist count dynamically
   useEffect(() => {
     if (wishlistItems && wishlistItems.length >= 0) {
       setWishlistCount(wishlistItems.length);
@@ -41,7 +40,7 @@ export default function Navbar() {
     }
   }, [wishlistItems]);
 
-  // 🌟 Scroll effect + role handling
+  // Scroll effect + role detection
   useEffect(() => {
     const savedRole = localStorage.getItem("role");
     setRole(savedRole || "");
@@ -51,7 +50,7 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [location]);
 
-  // 🌟 Auto-close profile menu after 5 seconds
+  // Auto-close profile menu after 5s
   useEffect(() => {
     if (profileOpen) {
       const timer = setTimeout(() => setProfileOpen(false), 5000);
@@ -59,7 +58,7 @@ export default function Navbar() {
     }
   }, [profileOpen]);
 
-  // 🌟 Search Function
+  // Search handler
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -68,12 +67,10 @@ export default function Navbar() {
     }
   };
 
-  // 🌟 Cart navigation
-  const handleCartClick = () => {
-    navigate("/cart");
-  };
+  // Cart navigation
+  const handleCartClick = () => navigate("/cart");
 
-  // 🌟 Wishlist navigation
+  // Wishlist navigation
   const handleWishlistClick = () => {
     const token = localStorage.getItem("authToken");
     if (!token) {
@@ -84,7 +81,7 @@ export default function Navbar() {
     }
   };
 
-  // 🌟 Tailwind classes
+  // Tailwind classes
   const buttonClass = "px-4 py-2 rounded-full transition font-medium";
   const activeClass = "bg-white text-gray-900 shadow-md";
   const inactiveClass = "bg-gray-400 text-gray-900 hover:bg-gray-500 shadow-md";
@@ -99,12 +96,12 @@ export default function Navbar() {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* 🛍️ Logo */}
+          {/* Logo */}
           <div className="text-2xl font-bold tracking-wide cursor-pointer">
             <Link to="/">HappyShopping</Link>
           </div>
 
-          {/* 🔍 Search Bar */}
+          {/* Search Bar */}
           <div className="flex-1 px-4 hidden md:flex">
             <form onSubmit={handleSearch} className="w-full flex">
               <input
@@ -123,7 +120,7 @@ export default function Navbar() {
             </form>
           </div>
 
-          {/* 🔘 Navbar Buttons */}
+          {/* Navbar Buttons */}
           <div className="flex items-center space-x-4 relative">
             <Link
               to="/"
@@ -156,7 +153,7 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* 👤 Profile Dropdown */}
+            {/* Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setProfileOpen(!profileOpen)}
@@ -178,7 +175,6 @@ export default function Navbar() {
                 </svg>
               </button>
 
-              {/* Smooth slide-down menu */}
               <div
                 className={`absolute right-0 mt-2 w-56 bg-white text-black rounded-lg shadow-lg py-2 z-50 transform transition-all duration-500 origin-top-right ${
                   profileOpen
@@ -207,7 +203,7 @@ export default function Navbar() {
               </div>
             </div>
 
-            {/* ❤️ Wishlist */}
+            {/* Wishlist */}
             <button
               onClick={handleWishlistClick}
               className="relative p-2 rounded-full hover:bg-gray-500 transition"
@@ -233,7 +229,7 @@ export default function Navbar() {
               )}
             </button>
 
-            {/* 🛒 Cart */}
+            {/* Cart */}
             <button
               onClick={handleCartClick}
               className="relative p-2 rounded-full hover:bg-gray-500 transition"

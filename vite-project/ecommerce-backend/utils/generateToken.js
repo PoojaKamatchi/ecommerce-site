@@ -1,8 +1,7 @@
-// utils/generateTokens.js
 import jwt from "jsonwebtoken";
 
-export const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: "30d",
+export const generateToken = (id, role = "user") => {
+  return jwt.sign({ id, role }, process.env.JWT_SECRET, {
+    expiresIn: "12h", // You can keep 12h if you prefer
   });
 };

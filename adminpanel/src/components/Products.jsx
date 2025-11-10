@@ -28,7 +28,13 @@ const Products = () => {
   const fetchProducts = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/products");
-      setProducts(Array.isArray(res.data) ? res.data : res.data.products || []);
+      if (Array.isArray(res.data)) {
+        setProducts(res.data);
+      } else if (res.data.products) {
+        setProducts(res.data.products);
+      } else {
+        setProducts([]);
+      }
     } catch (err) {
       console.error(err);
       toast.error("❌ Failed to load products!");
@@ -117,14 +123,14 @@ const Products = () => {
       if (formData.imageFile) data.append("image", formData.imageFile);
 
       await axios.put(
-        `http://localhost:5000/api/admin/products/${editingProduct._id}`,
+        `http://localhost:5000/api/auth/admin/products/${editingProduct._id}`,
         data,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       toast.success("✅ Product updated successfully!");
       setEditingProduct(null);
-      fetchProducts();
+      await fetchProducts(); // 🔄 Refresh after save
     } catch (err) {
       console.error(err);
       toast.error("❌ Failed to update product!");
@@ -137,11 +143,11 @@ const Products = () => {
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/admin/products/${id}`, {
+      await axios.delete(`http://localhost:5000/api/auth/admin/products/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("🗑️ Product deleted!");
-      setProducts((prev) => prev.filter((p) => p._id !== id));
+      await fetchProducts(); // Refresh to show updated stock
     } catch (err) {
       console.error(err);
       toast.error("❌ Failed to delete product!");
@@ -171,7 +177,6 @@ const Products = () => {
                 alt={product.name?.en}
                 className="rounded-xl h-40 w-full object-cover mb-3 border border-gray-300"
               />
-              <p className="text-xs text-blue-600 break-all mb-2">{getImageSource(product)}</p>
               <h2 className="font-bold text-lg">
                 {product.name?.en}{" "}
                 <span className="text-indigo-600 text-sm font-semibold">
@@ -180,12 +185,29 @@ const Products = () => {
               </h2>
               <p className="text-sm text-gray-600">
                 Category:{" "}
-                <span className="font-semibold text-gray-900">{getCategoryName(product.category)}</span>
+                <span className="font-semibold text-gray-900">
+                  {getCategoryName(product.category)}
+                </span>
               </p>
               <p>💰 Price: ₹{product.price}</p>
-              <p>📦 Stock: {product.stock}</p>
+              <p className="font-semibold text-gray-900">
+                📦 Stock:{" "}
+                <span
+                  className={`${
+                    product.stock <= 5
+                      ? "text-red-500"
+                      : product.stock <= 10
+                      ? "text-yellow-500"
+                      : "text-green-600"
+                  }`}
+                >
+                  {product.stock}
+                </span>
+              </p>
               {product.description && (
-                <p className="text-gray-700 mt-2 text-sm italic">{product.description}</p>
+                <p className="text-gray-700 mt-2 text-sm italic">
+                  {product.description}
+                </p>
               )}
               <div className="flex justify-between mt-4">
                 <button
@@ -214,7 +236,9 @@ const Products = () => {
             animate={{ scale: 1, opacity: 1 }}
             className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl"
           >
-            <h2 className="text-2xl font-bold text-indigo-700 mb-4">✏️ Edit Product</h2>
+            <h2 className="text-2xl font-bold text-indigo-700 mb-4">
+              ✏️ Edit Product
+            </h2>
             <div className="space-y-4">
               <input
                 type="text"
@@ -226,7 +250,9 @@ const Products = () => {
               />
               <ReactTransliterate
                 value={formData.nameTa}
-                onChangeText={(text) => setFormData((prev) => ({ ...prev, nameTa: text }))}
+                onChangeText={(text) =>
+                  setFormData((prev) => ({ ...prev, nameTa: text }))
+                }
                 lang="ta"
                 placeholder="பொருள் பெயர் (தமிழ்)"
                 className="w-full border rounded-lg p-2"

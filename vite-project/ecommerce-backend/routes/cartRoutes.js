@@ -1,23 +1,13 @@
-// routes/cartRoutes.js
 import express from "express";
-import {
-  addToCart,
-  getCart,
-  updateCartItem,
-  removeFromCart,
-  clearCart
-} from "../controllers/cartController.js";
-
-import { protect, admin } from "../middleware/authMiddleware.js";
-
+import { protect } from "../middleware/authMiddleware.js";
+import { addToCart, getCart, updateCartItem, removeFromCart, clearCart } from "../controllers/cartController.js";
 
 const router = express.Router();
 
-// ✅ Routes
-router.post("/add", protect, addToCart); // Add item to cart
-router.get("/", protect, getCart); // Get all items
-router.put("/update", protect, updateCartItem); // Update item quantity
-router.delete("/remove/:productId", protect, removeFromCart); // Remove item
-router.delete("/clear", protect, clearCart); // Clear cart
+router.post("/add", protect, addToCart);
+router.get("/", protect, getCart);
+router.put("/update", protect, updateCartItem);
+router.delete("/remove/:productId", protect, removeFromCart);
+router.delete("/clear", protect, clearCart);
 
 export default router;

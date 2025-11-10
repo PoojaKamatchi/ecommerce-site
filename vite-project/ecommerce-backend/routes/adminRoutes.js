@@ -1,26 +1,22 @@
+// routes/cartRoutes.js
 import express from "express";
 import {
-  registerAdmin,
-  adminLogin,
-  addCategory,
-  getCategories,
-  updateCategory,
-  deleteCategory,
-  getAllUsers,
-  getAllOrders,
-} from "../controllers/adminController.js";
+  addToCart,
+  getCart,
+  updateCartItem,
+  removeFromCart,
+  clearCart
+} from "../controllers/cartController.js";
+
+import { protect } from "../middleware/authMiddleware.js"; // ✅ only use protect (not adminProtect)
 
 const router = express.Router();
 
-router.post("/register", registerAdmin);
-router.post("/login", adminLogin);
-router.get("/users", getAllUsers);
-router.get("/orders", getAllOrders);
-
-// ✅ Category routes (no subcategory)
-router.post("/category", addCategory);
-router.get("/category", getCategories);
-router.put("/category/:id", updateCategory);
-router.delete("/category/:id", deleteCategory);
+// ✅ Routes
+router.post("/add", protect, addToCart); // Add item to cart
+router.get("/", protect, getCart); // Get all items in cart
+router.put("/update", protect, updateCartItem); // Update item quantity
+router.delete("/remove/:productId", protect, removeFromCart); // Remove item
+router.delete("/clear", protect, clearCart); // Clear cart
 
 export default router;

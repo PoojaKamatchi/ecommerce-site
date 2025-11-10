@@ -1,158 +1,181 @@
-import Category from "../models/categoryModel.js";
-import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import Admin from "../models/adminModel.js";
-import Order from "../models/orderModel.js";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import User from "../models/userModel.js";
-import multer from "multer";
-import path from "path";
-import fs from "fs";
+import Admin from "../models/adminModel.js";
+import sendEmail from "../utils/sendEmail.js";
 
-// ✅ Multer setup for image uploads
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    const uploadPath = "uploads/categories";
-    if (!fs.existsSync(uploadPath)) fs.mkdirSync(uploadPath, { recursive: true });
-    cb(null, uploadPath);
-  },
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
-});
+// Generate JWT
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
 
-const upload = multer({ storage }).single("image");
-
-// ✅ Register Admin
-export const registerAdmin = async (req, res) => {
+// ==========================
+// USER AUTH
+// ==========================
+export const registerUser = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) return res.status(400).json({ message: "Admin already exists" });
+    const { name, email, password, mobile } = req.body;
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: "User already exists" });
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newAdmin = new Admin({ email, password: hashedPassword });
-    await newAdmin.save();
-    res.json({ message: "Admin registered successfully" });
-  } catch (error) {
-    console.error("Register Admin Error:", error);
-    res.status(500).json({ message: "Server error" });
+    const user = await User.create({ name, email, password: hashedPassword, mobile });
+
+    res.status(201).json({
+      message: "User registered successfully",
+      token: generateToken(user._id),
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to register user" });
   }
 };
 
-// ✅ Admin Login
+export const loginUser = async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+
+    res.json({ message: "Login successful", token: generateToken(user._id), user });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to login" });
+  }
+};
+
+// ==========================
+// ADMIN OTP LOGIN
+// ==========================
 export const adminLogin = async (req, res) => {
   try {
     const { email, password } = req.body;
     const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(400).json({ message: "Invalid credentials" });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) return res.status(400).json({ message: "Invalid credentials" });
+    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = jwt.sign({ id: admin._id }, process.env.JWT_SECRET, { expiresIn: "1d" });
-    res.json({ token });
-  } catch (error) {
-    console.error("Admin Login Error:", error);
-    res.status(500).json({ message: "Server error" });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    admin.otp = otp;
+    admin.otpExpire = Date.now() + 10 * 60 * 1000; // 10 mins
+    await admin.save();
+
+    const message = `<h3>OTP for Admin Login</h3><p>Your OTP is: <b>${otp}</b></p><p>Expires in 10 minutes.</p>`;
+    await sendEmail({ to: admin.email, subject: "Admin OTP", html: message });
+
+    res.json({ message: "OTP sent to your email" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
-// ✅ Add Category (English + Tamil + Image upload)
-export const addCategory = (req, res) => {
-  upload(req, res, async (err) => {
-    if (err) {
-      console.error("File upload error:", err);
-      return res.status(500).json({ message: "File upload failed" });
-    }
-
-    try {
-      // Support both image upload and image URL
-      const { name } = req.body;
-      if (!name) {
-        return res.status(400).json({ message: "Category name is required" });
-      }
-
-      let parsedName;
-      try {
-        parsedName = typeof name === "string" ? JSON.parse(name) : name;
-      } catch {
-        parsedName = name;
-      }
-
-      const imagePath = req.file
-        ? `/uploads/categories/${req.file.filename}`
-        : req.body.imageUrl || "";
-
-      const newCategory = new Category({
-        name: {
-          en: parsedName.en || "",
-          ta: parsedName.ta || "",
-        },
-        image: imagePath,
-      });
-
-      await newCategory.save();
-      res.json({ message: "Category added successfully", category: newCategory });
-    } catch (error) {
-      console.error("Error adding category:", error);
-      res.status(500).json({ message: "Server error while adding category" });
-    }
-  });
-};
-
-// ✅ Get all categories
-export const getCategories = async (req, res) => {
+export const verifyAdminOtp = async (req, res) => {
   try {
-    const categories = await Category.find();
-    res.json(categories);
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    res.status(500).json({ message: "Server error" });
+    const { email, otp } = req.body;
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    if (!admin.otp || !admin.otpExpire)
+      return res.status(400).json({ message: "No OTP requested" });
+
+    if (admin.otp !== otp || admin.otpExpire < Date.now())
+      return res.status(400).json({ message: "Invalid or expired OTP" });
+
+    admin.otp = undefined;
+    admin.otpExpire = undefined;
+    await admin.save();
+
+    res.json({ message: "Login successful", token: generateToken(admin._id), admin });
+  } catch (err) {
+    res.status(500).json({ message: "OTP verification failed" });
   }
 };
 
-// ✅ Update category
-export const updateCategory = async (req, res) => {
+// ==========================
+// ADMIN PASSWORD RESET
+// ==========================
+export const forgotAdminPassword = async (req, res) => {
   try {
-    const { id } = req.params;
-    const updated = await Category.findByIdAndUpdate(id, req.body, { new: true });
-    res.json(updated);
-  } catch (error) {
-    console.error("Update category error:", error);
-    res.status(500).json({ message: "Server error" });
+    const { email } = req.body;
+    const admin = await Admin.findOne({ email });
+    if (!admin) return res.status(404).json({ message: "Admin not found" });
+
+    const resetToken = crypto.randomBytes(20).toString("hex");
+    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+
+    admin.resetPasswordToken = hashedToken;
+    admin.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+    await admin.save();
+
+    const resetUrl = `${process.env.FRONTEND_URL}/admin/reset-password/${resetToken}`;
+    const message = `<p>Reset your password: <a href="${resetUrl}" target="_blank">${resetUrl}</a></p>`;
+    await sendEmail({ to: admin.email, subject: "Admin Password Reset", html: message });
+
+    res.json({ message: "Password reset link sent to your email" });
+  } catch (err) {
+    res.status(500).json({ message: "Error sending reset email" });
   }
 };
 
-// ✅ Delete category
-export const deleteCategory = async (req, res) => {
+export const resetAdminPassword = async (req, res) => {
   try {
-    const { id } = req.params;
-    await Category.findByIdAndDelete(id);
-    res.json({ message: "Category deleted successfully" });
-  } catch (error) {
-    console.error("Delete category error:", error);
-    res.status(500).json({ message: "Server error" });
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+    const admin = await Admin.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpire: { $gt: Date.now() },
+    });
+
+    if (!admin) return res.status(400).json({ message: "Invalid or expired token" });
+
+    admin.password = await bcrypt.hash(password, 10);
+    admin.resetPasswordToken = undefined;
+    admin.resetPasswordExpire = undefined;
+    await admin.save();
+
+    res.json({ message: "Password reset successful" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error during password reset" });
   }
 };
 
-// ✅ Get all users
+// ==========================
+// GET ALL USERS (Admin Only)
+// ==========================
 export const getAllUsers = async (req, res) => {
   try {
-    const users = await User.find();
+    const users = await User.find().select("-password");
     res.json(users);
-  } catch (error) {
-    console.error("Get Users Error:", error);
-    res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
-// ✅ Get all orders
-export const getAllOrders = async (req, res) => {
+// ==========================
+// REGISTER NEW ADMIN (Admin Only)
+// ==========================
+export const registerAdmin = async (req, res) => {
   try {
-    const orders = await Order.find().populate("user").populate("products.product");
-    res.json(orders);
-  } catch (error) {
-    console.error("Get Orders Error:", error);
-    res.status(500).json({ message: "Server error" });
+    const { name, email, password } = req.body;
+
+    const existingAdmin = await Admin.findOne({ email });
+    if (existingAdmin)
+      return res.status(400).json({ message: "Admin already exists" });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    const admin = await Admin.create({
+      name,
+      email,
+      password: hashedPassword,
+    });
+
+    res.status(201).json({ message: "New admin registered successfully", admin });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to register admin" });
   }
 };

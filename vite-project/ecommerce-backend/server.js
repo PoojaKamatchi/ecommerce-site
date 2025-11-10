@@ -16,6 +16,7 @@ dotenv.config();
 connectDB();
 
 // ✅ Import all routes
+import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import productRoutes from "./routes/productRoutes.js";
 import wishlistRoutes from "./routes/wishlistRoutes.js";
@@ -24,7 +25,7 @@ import cartRoutes from "./routes/cartRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import adminProductRoutes from "./routes/adminProductRoutes.js";
 import adminCategoryRoutes from "./routes/adminCategoryRoutes.js";
-import categoryRoutes from "./routes/categoryRoutes.js"; // ✅ NEW: Customer Category Routes
+import categoryRoutes from "./routes/categoryRoutes.js"; // ✅ Customer Category Routes
 
 const app = express();
 const server = http.createServer(app);
@@ -74,13 +75,18 @@ app.get("/", (req, res) => {
 });
 
 // ✅ API routes
+app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/admin/products", adminProductRoutes);
-app.use("/api/admin/categories", adminCategoryRoutes); // ✅ Admin routes
+
+// 🟢 CHANGED HERE — this allows /api/auth/admin/login
+app.use("/api/auth", adminRoutes);
+
+app.use("/api/auth/admin/products", adminProductRoutes);
+app.use("/api/auth/admin/category", adminCategoryRoutes);
+
 app.use("/api/categories", categoryRoutes); // ✅ Customer routes
 app.use("/api/wishlist", wishlistRoutes);
 
