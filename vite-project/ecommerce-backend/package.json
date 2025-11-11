@@ -1,9 +1,8 @@
 {
-<<<<<<< HEAD
   "name": "ecommerce-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
@@ -28,13 +27,10 @@
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
     "react-transliterate": "^1.1.9",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "@heroicons/react": "^2.2.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
-=======
-  "dependencies": {
-    "@heroicons/react": "^2.2.0"
->>>>>>> 2708d04ac937f4f4240f073d63c1dbe82ace7209
   }
 }

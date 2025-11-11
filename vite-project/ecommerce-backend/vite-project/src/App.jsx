@@ -1,4 +1,3 @@
-// src/App.jsx
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { CartProvider } from "./components/CartContext.jsx";
 import { WishlistProvider } from "./components/WishlistContext.jsx";
@@ -15,7 +14,7 @@ import ProductPage from "./pages/ProductPage.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import CheckoutPage from "./pages/CheckoutPage.jsx";
-import SearchResults from "./pages/SearchResults.jsx";
+import PaymentPage from "./pages/PaymentPage.jsx";
 import OrderSuccessPage from "./pages/OrderSuccessPage.jsx";
 import ProfilePage from "./pages/ProfilePage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
@@ -25,6 +24,7 @@ import SettingsPage from "./pages/SettingsPage.jsx";
 import ReviewsPage from "./pages/ReviewsPage.jsx";
 import AboutPage from "./pages/AboutPage.jsx";
 import PrivacyPolicy from "./pages/PrivacyPolicy.jsx";
+import SearchResults from "./pages/SearchResults.jsx";
 
 export default function App() {
   return (
@@ -34,15 +34,15 @@ export default function App() {
           <Navbar />
           <Routes>
             <Route path="/" element={<Home />} />
-<Route path="/categories" element={<CategoryPage />} />   {/* shows all categories */}
-<Route path="/category/:id" element={<ProductPage />} />  {/* shows products of selected category */}
-
+            <Route path="/categories" element={<CategoryPage />} />
+            <Route path="/category/:id" element={<ProductPage />} />
             <Route path="/cart" element={<Cart />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/payment/:orderId" element={<PaymentPage />} />
+            <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/search" element={<SearchResults />} />
-            <Route path="/order-success/:orderId" element={<OrderSuccessPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/wishlist" element={<WishlistPage />} />

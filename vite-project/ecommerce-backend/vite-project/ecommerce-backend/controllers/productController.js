@@ -57,3 +57,28 @@ export const getProductById = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch product" });
   }
 };
+
+// 🔍 Search products by name
+export const searchProducts = async (req, res) => {
+  const { query } = req.query; // get ?query= from URL
+
+  if (!query) return res.status(400).json({ message: "Query is required" });
+
+  try {
+    const products = await Product.find({
+      "name.en": { $regex: query, $options: "i" }, // case-insensitive search in English name
+    }).populate("category", "name");
+
+    const formatted = products.map((p) => ({
+      ...p._doc,
+      image: p.image?.startsWith("http")
+        ? p.image
+        : `${req.protocol}://${req.get("host")}${p.image}`,
+    }));
+
+    res.json(formatted);
+  } catch (error) {
+    console.error("🔥 Error searching products:", error);
+    res.status(500).json({ message: "Failed to search products" });
+  }
+};
