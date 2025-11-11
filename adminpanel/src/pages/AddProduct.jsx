@@ -2,8 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { ReactTransliterate } from "react-transliterate";
-import "react-transliterate/dist/index.css";
+<input type="text" value={value} onChange={(e) => setValue(e.target.value)} />
 
 const AddProduct = ({ onProductAdded }) => {
   const [form, setForm] = useState({

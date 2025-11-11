@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { ReactTransliterate } from "react-transliterate";
-import "react-transliterate/dist/index.css";
+<input type="text" value={value} onChange={(e) => setValue(e.target.value)} />
 
 const AddCategory = () => {
   const [nameEn, setNameEn] = useState("");

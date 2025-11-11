@@ -2,9 +2,9 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion } from "framer-motion";
 import { ToastContainer, toast } from "react-toastify";
-import { ReactTransliterate } from "react-transliterate";
+<input type="text" value={value} onChange={(e) => setValue(e.target.value)} />
+
 import "react-toastify/dist/ReactToastify.css";
-import "react-transliterate/dist/index.css";
 
 const Products = () => {
   const [products, setProducts] = useState([]);
