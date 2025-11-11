@@ -2,7 +2,10 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-<input type="text" value={value} onChange={(e) => setValue(e.target.value)} />
+
+// Optional: if you want Tamil transliteration
+// import { ReactTransliterate } from "react-transliterate";
+// import "react-transliterate/dist/index.css";
 
 const AddProduct = ({ onProductAdded }) => {
   const [form, setForm] = useState({
@@ -12,8 +15,8 @@ const AddProduct = ({ onProductAdded }) => {
     stock: "",
     category: "",
     description: "",
-    imageFile: null,   // file object
-    imageUrl: "",      // optional URL
+    imageFile: null,
+    imageUrl: "",
   });
 
   const [imagePreview, setImagePreview] = useState(null);
@@ -27,7 +30,9 @@ const AddProduct = ({ onProductAdded }) => {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/auth/admin/category");
+      const res = await axios.get("http://localhost:5000/api/auth/admin/category", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setCategories(res.data);
     } catch (err) {
       toast.error("⚠️ Failed to fetch categories!");
@@ -36,15 +41,15 @@ const AddProduct = ({ onProductAdded }) => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
-    if (name === "imageFile") {
+    if (name === "imageFile" && files?.length > 0) {
       const file = files[0];
-      setForm({ ...form, imageFile: file, imageUrl: "" });
+      setForm((prev) => ({ ...prev, imageFile: file, imageUrl: "" }));
       setImagePreview(URL.createObjectURL(file));
     } else if (name === "imageUrl") {
-      setForm({ ...form, imageUrl: value, imageFile: null });
+      setForm((prev) => ({ ...prev, imageUrl: value, imageFile: null }));
       setImagePreview(value);
     } else {
-      setForm({ ...form, [name]: value });
+      setForm((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -59,25 +64,24 @@ const AddProduct = ({ onProductAdded }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-    setLoading(true);
 
+    setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("nameEn", form.nameEn);
-      formData.append("nameTa", form.nameTa);
-      formData.append("price", form.price);
-      formData.append("stock", form.stock);
-      formData.append("category", form.category);
-      formData.append("description", form.description);
-      if (form.imageFile) formData.append("image", form.imageFile); // must match backend field name
-      else formData.append("imageUrl", form.imageUrl);
-
-      await axios.post("http://localhost:5000/api/auth/admin/products", formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
+      Object.entries(form).forEach(([key, value]) => {
+        if (value) formData.append(key, value);
       });
+
+      await axios.post(
+        "http://localhost:5000/api/auth/admin/products",
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
 
       toast.success("✅ Product added successfully!");
       setForm({
@@ -93,7 +97,7 @@ const AddProduct = ({ onProductAdded }) => {
       setImagePreview(null);
       if (onProductAdded) onProductAdded();
     } catch (err) {
-      console.error("🔥 Product upload error:", err.response?.data || err.message);
+      console.error(err.response?.data || err.message);
       toast.error(err.response?.data?.message || "❌ Failed to add product!");
     } finally {
       setLoading(false);
@@ -119,12 +123,21 @@ const AddProduct = ({ onProductAdded }) => {
               className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none"
               required
             />
-            <ReactTransliterate
+            {/* Uncomment below if using transliterate */}
+            {/* <ReactTransliterate
               value={form.nameTa}
-              onChangeText={(text) => setForm({ ...form, nameTa: text })}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, nameTa: text }))}
               lang="ta"
               placeholder="பொருள் பெயர் (தமிழ்)"
               className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none bg-gray-50"
+            /> */}
+            <input
+              type="text"
+              name="nameTa"
+              value={form.nameTa}
+              onChange={handleChange}
+              placeholder="Product Name (Tamil)"
+              className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none"
             />
           </div>
 
