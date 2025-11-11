@@ -33,7 +33,9 @@ const server = http.createServer(app);
 // ✅ Define allowed origins for both admin & customer
 const allowedOrigins = [
   "http://localhost:5173", // Customer Frontend
-  "http://localhost:5174", // Admin Panel
+  "http://localhost:5174",
+    "https://ecommerce-site-423g.vercel.app",
+  "https://ecommerce-site-423g-3ce0kcgwt-poojakamatchis-projects.vercel.app" // Admin Panel
 ];
 
 // ✅ CORS setup (for cross-origin requests)
