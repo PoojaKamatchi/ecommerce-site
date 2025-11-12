@@ -35,8 +35,9 @@ const allowedOrigins = [
   "http://localhost:5173", // Customer Frontend
   "http://localhost:5174",
     "https://ecommerce-site-423g.vercel.app",
-  "https://ecommerce-site-423g-3ce0kcgwt-poojakamatchis-projects.vercel.app" // Admin Panel
+   "https://ecommerce-site-a8lt.vercel.app", // ✅ Frontend (Vercel)
 ];
+
 
 // ✅ CORS setup (for cross-origin requests)
 app.use(
