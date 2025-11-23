@@ -1,87 +1,81 @@
-import { createContext, useContext, useState, useEffect } from "react";
+// src/components/WishlistContext.jsx
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
 import axios from "axios";
 
 const WishlistContext = createContext();
-
-export function useWishlist() {
-  return useContext(WishlistContext);
-}
+export function useWishlist() { return useContext(WishlistContext); }
 
 export function WishlistProvider({ children }) {
   const [wishlist, setWishlist] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const getToken = () => localStorage.getItem("authToken");
 
-  const token = localStorage.getItem("authToken");
-  const userId = localStorage.getItem("userId");
+  const normalizeItems = (list = []) =>
+    list.map(item => {
+      const product = item.product || item;
+      const name = typeof product.name === "object" ? product.name.en || product.name.ta : product.name;
+      return { ...product, name };
+    });
 
-  // 🧾 Fetch wishlist from backend
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!userId || !token) return;
-      try {
-        const { data } = await axios.get(`${API_URL}/api/wishlist/${userId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setWishlist(data.products || []);
-      } catch (error) {
-        console.error("❌ Error fetching wishlist:", error);
-      }
-    };
-    fetchWishlist();
-  }, [userId, token]);
-
-  // ➕ Add product to wishlist
-  const addToWishlist = async (product) => {
-    if (!userId || !token) {
-      alert("Please log in to add items to your wishlist ❤️");
-      return;
-    }
+  // Fetch wishlist from backend
+  const fetchWishlist = useCallback(async () => {
+    const token = getToken();
+    if (!token) { setWishlist([]); setLoading(false); return; }
 
     try {
-      const { data } = await axios.post(
-        `${API_URL}/api/wishlist/add`,
-        { userId, productId: product._id },
+      const res = await axios.get(`${API_URL}/api/wishlist`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setWishlist(normalizeItems(res.data.wishlist?.products || []));
+    } catch (err) {
+      console.error("Failed to fetch wishlist:", err.response?.data || err.message);
+      setWishlist([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [API_URL]);
+
+  useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
+
+  // Add product to wishlist
+  const addToWishlist = async (product) => {
+    const token = getToken();
+    if (!token) return alert("Please login first!");
+    if (!product?._id) return alert("Invalid product.");
+
+    try {
+      const res = await axios.post(`${API_URL}/api/wishlist/add`,
+        { productId: product._id },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      setWishlist((prev) => {
-        const alreadyInList = prev.some((p) => p._id === product._id);
-        return alreadyInList ? prev : [...prev, product];
-      });
-
-      console.log("✅ Added to wishlist:", data);
-    } catch (error) {
-      console.error("❌ Error adding to wishlist:", error);
+      setWishlist(normalizeItems(res.data.wishlist?.products || []));
+    } catch (err) {
+      console.error("Add to wishlist error:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Failed to add product to wishlist.");
     }
   };
 
-  // ❌ Remove product from wishlist
+  // Remove product from wishlist
   const removeFromWishlist = async (productId) => {
-    if (!userId || !token) return;
+    const token = getToken();
+    if (!token) return alert("Please login first!");
+    if (!productId) return;
+
     try {
-      await axios.delete(`${API_URL}/api/wishlist/remove/${productId}`, {
-        data: { userId },
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await axios.delete(`${API_URL}/api/wishlist/remove/${productId}`, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      setWishlist((prev) => prev.filter((p) => p._id !== productId));
-    } catch (error) {
-      console.error("❌ Error removing from wishlist:", error);
+      setWishlist(normalizeItems(res.data.wishlist?.products || []));
+    } catch (err) {
+      console.error("Remove from wishlist error:", err.response?.data || err.message);
+      alert(err.response?.data?.message || "Failed to remove product from wishlist.");
     }
   };
-
-  // 🧡 Check if product is already in wishlist
-  const isInWishlist = (productId) =>
-    wishlist.some((p) => p._id === productId);
 
   return (
-    <WishlistContext.Provider
-      value={{
-        wishlist,
-        addToWishlist,
-        removeFromWishlist,
-        isInWishlist,
-      }}
-    >
+    <WishlistContext.Provider value={{ wishlist, loading, fetchWishlist, addToWishlist, removeFromWishlist }}>
       {children}
     </WishlistContext.Provider>
   );

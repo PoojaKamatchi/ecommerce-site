@@ -9,6 +9,7 @@ const Products = () => {
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [editingProduct, setEditingProduct] = useState(null);
+
   const [formData, setFormData] = useState({
     nameEn: "",
     nameTa: "",
@@ -19,12 +20,16 @@ const Products = () => {
     url: "",
     imageFile: null,
   });
+
   const [imagePreview, setImagePreview] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState(""); // ✅ Search state
+  const [searchValue, setSearchValue] = useState("");
+
   const token = localStorage.getItem("adminToken");
 
+  // -----------------------------
   // Fetch Products
+  // -----------------------------
   const fetchProducts = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/products");
@@ -37,7 +42,9 @@ const Products = () => {
     }
   };
 
+  // -----------------------------
   // Fetch Categories
+  // -----------------------------
   const fetchCategories = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/admin/category", {
@@ -49,7 +56,6 @@ const Products = () => {
     }
   };
 
-  // Load products & categories on mount
   useEffect(() => {
     if (!token) {
       toast.error("❌ Admin token missing! Login required.");
@@ -59,9 +65,12 @@ const Products = () => {
     fetchCategories();
   }, []);
 
-  // Handle input changes for form
+  // -----------------------------
+  // Handle Input Change
+  // -----------------------------
   const handleChange = (e) => {
     const { name, value, files } = e.target;
+
     if (name === "imageFile" && files?.length > 0) {
       const file = files[0];
       setFormData((prev) => ({ ...prev, imageFile: file, url: "" }));
@@ -72,7 +81,6 @@ const Products = () => {
     }
   };
 
-  // Image source helper
   const getImageSource = (product) => {
     if (product.url) return product.url;
     if (product.image?.startsWith("http")) return product.image;
@@ -80,7 +88,6 @@ const Products = () => {
     return "https://via.placeholder.com/200x150?text=No+Image";
   };
 
-  // Category name helper
   const getCategoryName = (category) => {
     if (!category) return "Unknown";
     const catId = category._id ? category._id : category;
@@ -88,7 +95,9 @@ const Products = () => {
     return found ? `${found.name?.en} (${found.name?.ta || "-"})` : "Unknown";
   };
 
-  // Edit product
+  // -----------------------------
+  // OPEN EDIT POPUP
+  // -----------------------------
   const handleEdit = (product) => {
     setEditingProduct(product);
     setFormData({
@@ -104,10 +113,13 @@ const Products = () => {
     setImagePreview(getImageSource(product));
   };
 
-  // Save product
+  // -----------------------------
+  // SAVE EDITED PRODUCT
+  // -----------------------------
   const handleSave = async () => {
     if (!editingProduct) return;
     setLoading(true);
+
     try {
       const data = new FormData();
       Object.entries(formData).forEach(([key, val]) => {
@@ -115,7 +127,7 @@ const Products = () => {
       });
 
       await axios.put(
-        `http://localhost:5000/api/auth/admin/products/${editingProduct._id}`,
+        `http://localhost:5000/api/admin/products/${editingProduct._id}`,
         data,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -131,13 +143,18 @@ const Products = () => {
     }
   };
 
-  // Delete product
+  // -----------------------------
+  // DELETE PRODUCT
+  // -----------------------------
   const handleDelete = async (id) => {
     if (!window.confirm("Delete this product?")) return;
+
     try {
-      await axios.delete(`http://localhost:5000/api/auth/admin/products/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.delete(
+        `http://localhost:5000/api/admin/products/${id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       toast.success("🗑️ Product deleted!");
       await fetchProducts();
     } catch (err) {
@@ -146,7 +163,9 @@ const Products = () => {
     }
   };
 
-  // Filter products based on search input
+  // -----------------------------
+  // Search Filter
+  // -----------------------------
   useEffect(() => {
     const filtered = products.filter((p) =>
       p.name?.en.toLowerCase().includes(searchValue.toLowerCase())
@@ -162,7 +181,6 @@ const Products = () => {
         🛍️ Product List
       </h1>
 
-      {/* Search Bar */}
       <input
         type="text"
         value={searchValue}
@@ -187,19 +205,23 @@ const Products = () => {
                 alt={product.name?.en}
                 className="rounded-xl h-40 w-full object-cover mb-3 border border-gray-300"
               />
+
               <h2 className="font-bold text-lg">
                 {product.name?.en}{" "}
                 <span className="text-indigo-600 text-sm font-semibold">
                   ({product.name?.ta})
                 </span>
               </h2>
+
               <p className="text-sm text-gray-600">
                 Category:{" "}
                 <span className="font-semibold text-gray-900">
                   {getCategoryName(product.category)}
                 </span>
               </p>
+
               <p>💰 Price: ₹{product.price}</p>
+
               <p className="font-semibold text-gray-900">
                 📦 Stock:{" "}
                 <span
@@ -214,11 +236,13 @@ const Products = () => {
                   {product.stock}
                 </span>
               </p>
+
               {product.description && (
                 <p className="text-gray-700 mt-2 text-sm italic">
                   {product.description}
                 </p>
               )}
+
               <div className="flex justify-between mt-4">
                 <button
                   onClick={() => handleEdit(product)}
@@ -226,6 +250,7 @@ const Products = () => {
                 >
                   ✏️ Edit
                 </button>
+
                 <button
                   onClick={() => handleDelete(product._id)}
                   className="bg-red-600 px-3 py-1 rounded-lg text-white hover:bg-red-700"
@@ -235,6 +260,125 @@ const Products = () => {
               </div>
             </motion.div>
           ))}
+        </div>
+      )}
+
+      {/* ----------------------------------------------------
+          EDIT POPUP MODAL
+      ---------------------------------------------------- */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex justify-center items-center z-50">
+          <motion.div
+            initial={{ scale: 0.7, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="bg-white p-6 rounded-2xl w-11/12 md:w-1/2 shadow-2xl"
+          >
+            <h2 className="text-2xl font-bold text-indigo-700 mb-4">
+              ✏️ Edit Product
+            </h2>
+
+            <div className="flex justify-center mb-4">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-40 w-40 object-cover rounded-xl shadow"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                name="nameEn"
+                value={formData.nameEn}
+                onChange={handleChange}
+                placeholder="Product Name (English)"
+                className="w-full p-2 border rounded-lg"
+              />
+
+              <input
+                type="text"
+                name="nameTa"
+                value={formData.nameTa}
+                onChange={handleChange}
+                placeholder="Product Name (Tamil)"
+                className="w-full p-2 border rounded-lg"
+              />
+
+              <input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                placeholder="Price"
+                className="w-full p-2 border rounded-lg"
+              />
+
+              <input
+                type="number"
+                name="stock"
+                value={formData.stock}
+                onChange={handleChange}
+                placeholder="Stock"
+                className="w-full p-2 border rounded-lg"
+              />
+
+              <select
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                className="w-full p-2 border rounded-lg"
+              >
+                <option value="">Select Category</option>
+                {categories.map((c) => (
+                  <option key={c._id} value={c._id}>
+                    {c.name.en} ({c.name.ta})
+                  </option>
+                ))}
+              </select>
+
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Description"
+                className="w-full p-2 border rounded-lg h-20"
+              ></textarea>
+
+              <input
+                type="text"
+                name="url"
+                value={formData.url}
+                onChange={handleChange}
+                placeholder="Image URL"
+                className="w-full p-2 border rounded-lg"
+              />
+
+              <input
+                type="file"
+                name="imageFile"
+                accept="image/*"
+                onChange={handleChange}
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+
+            <div className="flex justify-between mt-5">
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="px-4 py-2 bg-gray-400 rounded-lg text-white hover:bg-gray-500"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleSave}
+                disabled={loading}
+                className="px-4 py-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700"
+              >
+                {loading ? "Updating..." : "Save Changes"}
+              </button>
+            </div>
+          </motion.div>
         </div>
       )}
     </div>

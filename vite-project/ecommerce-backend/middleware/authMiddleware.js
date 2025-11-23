@@ -1,53 +1,50 @@
 import jwt from "jsonwebtoken";
+import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
 import Admin from "../models/adminModel.js";
 
-// ✅ Verify user token
-export const protect = async (req, res, next) => {
+export const protect = asyncHandler(async (req, res, next) => {
   let token;
-  try {
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      const user = await User.findById(decoded.id).select("-password");
-      if (!user) return res.status(401).json({ message: "User not found" });
-
-      req.user = user;
+      req.user = await User.findById(decoded.id).select("-password");
       next();
-    } else {
-      res.status(401).json({ message: "Not authorized, no token" });
+    } catch (err) {
+      res.status(401);
+      throw new Error("Not authorized, token failed");
     }
-  } catch (error) {
-    console.error("User Auth Error:", error.message);
-    res.status(401).json({ message: "Not authorized, token failed" });
   }
-};
 
-// ✅ Verify admin token
-export const adminProtect = async (req, res, next) => {
+  if (!token) {
+    res.status(401);
+    throw new Error("Not authorized, no token");
+  }
+});
+
+export const adminProtect = asyncHandler(async (req, res, next) => {
   let token;
-  try {
-    if (
-      req.headers.authorization &&
-      req.headers.authorization.startsWith("Bearer")
-    ) {
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith("Bearer")
+  ) {
+    try {
       token = req.headers.authorization.split(" ")[1];
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-
-      const admin = await Admin.findById(decoded.id).select("-password");
-      if (!admin) return res.status(401).json({ message: "Admin not found" });
-
-      req.admin = admin;
+      req.admin = await Admin.findById(decoded.id).select("-password");
       next();
-    } else {
-      res.status(401).json({ message: "Not authorized, no token" });
+    } catch (err) {
+      res.status(401);
+      throw new Error("Admin not authorized, token failed");
     }
-  } catch (error) {
-    console.error("Admin Auth Error:", error.message);
-    res.status(401).json({ message: "Not authorized, token failed" });
   }
-};
+
+  if (!token) {
+    res.status(401);
+    throw new Error("Admin not authorized, no token");
+  }
+});

@@ -5,6 +5,7 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+
 import Sidebar from "./components/Sidebar";
 import Dashboard from "./components/Dashboard";
 import Products from "./components/Products";
@@ -12,10 +13,12 @@ import AddProduct from "./pages/AddProduct";
 import Orders from "./components/Orders";
 import Users from "./components/Users";
 import Reports from "./components/Reports";
+
 import Login from "./pages/Login";
 import AddCategory from "./pages/AddCategory";
 import AddAdmin from "./pages/AddAdmin";
-// ✅ New pages for password reset
+
+// Reset Password pages
 import AdminForgotPassword from "./pages/AdminForgotPassword";
 import AdminResetPassword from "./pages/AdminResetPassword";
 
@@ -39,24 +42,25 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Redirect root to admin login */}
+        {/* Default Route → Admin Login */}
         <Route path="/" element={<Navigate to="/admin/login" />} />
 
-        {/* Admin Auth Routes */}
+        {/* Admin AUTH Pages */}
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin/forgot-password" element={<AdminForgotPassword />} />
         <Route path="/admin/reset-password/:token" element={<AdminResetPassword />} />
 
-        <Route path="/admin/add-admin" element={<AddAdmin />} />
-        {/* Admin Panel Routes */}
+        {/* ADMIN PANEL LAYOUT */}
         <Route
           path="/admin/*"
           element={
             <div className="flex w-full min-h-screen">
               <Sidebar />
+
               <div className="flex-1 p-6 bg-gray-100">
                 <Routes>
                   <Route path="dashboard" element={<Dashboard />} />
+
                   <Route path="products" element={<Products products={products} />} />
                   <Route
                     path="products/add"
@@ -68,10 +72,16 @@ function App() {
                       />
                     }
                   />
+
                   <Route path="orders" element={<Orders />} />
                   <Route path="users" element={<Users />} />
                   <Route path="reports" element={<Reports />} />
+
+                  {/* FIXED → Add Category route */}
                   <Route path="add-category" element={<AddCategory />} />
+
+                  {/* FIXED → Add Admin is NOW inside admin layout */}
+                  <Route path="add-admin" element={<AddAdmin />} />
                 </Routes>
               </div>
             </div>

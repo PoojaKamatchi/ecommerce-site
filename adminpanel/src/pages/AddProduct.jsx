@@ -2,10 +2,8 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
-// Optional: if you want Tamil transliteration
-// import { ReactTransliterate } from "react-transliterate";
-// import "react-transliterate/dist/index.css";
+import { ReactTransliterate } from "react-transliterate";
+import "react-transliterate/dist/index.css";
 
 const AddProduct = ({ onProductAdded }) => {
   const [form, setForm] = useState({
@@ -24,21 +22,29 @@ const AddProduct = ({ onProductAdded }) => {
   const [loading, setLoading] = useState(false);
   const token = localStorage.getItem("adminToken");
 
+  // -----------------------------
+  // Fetch Categories
+  // -----------------------------
+  const fetchCategories = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:5000/api/auth/admin/category",
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCategories(res.data);
+    } catch (err) {
+      toast.error("⚠️ Failed to fetch categories!");
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     fetchCategories();
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const res = await axios.get("http://localhost:5000/api/auth/admin/category", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setCategories(res.data);
-    } catch (err) {
-      toast.error("⚠️ Failed to fetch categories!");
-    }
-  };
-
+  // -----------------------------
+  // Handle Input Change
+  // -----------------------------
   const handleChange = (e) => {
     const { name, value, files } = e.target;
     if (name === "imageFile" && files?.length > 0) {
@@ -53,6 +59,9 @@ const AddProduct = ({ onProductAdded }) => {
     }
   };
 
+  // -----------------------------
+  // Form Validation
+  // -----------------------------
   const validateForm = () => {
     if (!form.nameEn.trim() || !form.price || !form.stock || !form.category) {
       toast.warn("Please fill in all required fields!");
@@ -61,6 +70,9 @@ const AddProduct = ({ onProductAdded }) => {
     return true;
   };
 
+  // -----------------------------
+  // Submit Product
+  // -----------------------------
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -68,12 +80,17 @@ const AddProduct = ({ onProductAdded }) => {
     setLoading(true);
     try {
       const formData = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
-        if (value) formData.append(key, value);
-      });
+      formData.append("nameEn", form.nameEn);
+      formData.append("nameTa", form.nameTa);
+      formData.append("price", form.price);
+      formData.append("stock", form.stock);
+      formData.append("category", form.category);
+      formData.append("description", form.description);
+      if (form.imageFile) formData.append("imageFile", form.imageFile);
+      else if (form.imageUrl) formData.append("imageUrl", form.imageUrl);
 
-      await axios.post(
-        "http://localhost:5000/api/auth/admin/products",
+      const res = await axios.post(
+        "http://localhost:5000/api/admin/products",
         formData,
         {
           headers: {
@@ -95,7 +112,7 @@ const AddProduct = ({ onProductAdded }) => {
         imageUrl: "",
       });
       setImagePreview(null);
-      if (onProductAdded) onProductAdded();
+      if (onProductAdded) onProductAdded(res.data);
     } catch (err) {
       console.error(err.response?.data || err.message);
       toast.error(err.response?.data?.message || "❌ Failed to add product!");
@@ -123,21 +140,12 @@ const AddProduct = ({ onProductAdded }) => {
               className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none"
               required
             />
-            {/* Uncomment below if using transliterate */}
-            {/* <ReactTransliterate
+            <ReactTransliterate
               value={form.nameTa}
               onChangeText={(text) => setForm((prev) => ({ ...prev, nameTa: text }))}
               lang="ta"
               placeholder="பொருள் பெயர் (தமிழ்)"
               className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none bg-gray-50"
-            /> */}
-            <input
-              type="text"
-              name="nameTa"
-              value={form.nameTa}
-              onChange={handleChange}
-              placeholder="Product Name (Tamil)"
-              className="w-full p-4 rounded-xl border-2 border-gray-300 focus:border-purple-500 outline-none"
             />
           </div>
 

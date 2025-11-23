@@ -16,7 +16,7 @@ export default function AddAdmin() {
     try {
       const token = localStorage.getItem("adminToken");
       const { data } = await axios.post(
-        "http://localhost:5000/api/auth/admin/register",
+        "http://localhost:5000/api/admin/register",
         { name, email, password },
         { headers: { Authorization: `Bearer ${token}` } }
       );

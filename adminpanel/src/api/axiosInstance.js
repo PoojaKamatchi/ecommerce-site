@@ -1,8 +1,7 @@
-// src/utils/axiosInstance.js
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+  baseURL: import.meta.env.VITE_API_URL, // ONLY this
 });
 
 axiosInstance.interceptors.request.use((config) => {
@@ -13,5 +12,7 @@ axiosInstance.interceptors.request.use((config) => {
   }
   return config;
 });
+
+console.log("API Base URL:", import.meta.env.VITE_API_URL); // <-- TEMPORARY: to verify
 
 export default axiosInstance;

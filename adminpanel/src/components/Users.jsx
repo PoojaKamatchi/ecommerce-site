@@ -10,12 +10,20 @@ const Users = () => {
   const [selectedUser, setSelectedUser] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
 
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem("adminToken");
-      const res = await axios.get("http://localhost:5000/api/auth/admin/users", {
+      if (!token) {
+        window.location.href = "/admin/login";
+        return;
+      }
+
+      const res = await axios.get(`${API_URL}/api/auth/admin/users`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setUsers(res.data);
       setFilteredUsers(res.data);
     } catch (err) {
@@ -39,17 +47,20 @@ const Users = () => {
     fetchUsers();
   }, []);
 
-  // Filter users based on search & role
+  // 🔍 Search + Filter
   useEffect(() => {
     let temp = [...users];
+
     if (search)
       temp = temp.filter(
         (u) =>
-          u.name.toLowerCase().includes(search.toLowerCase()) ||
-          u.email.toLowerCase().includes(search.toLowerCase())
+          u.name?.toLowerCase().includes(search.toLowerCase()) ||
+          u.email?.toLowerCase().includes(search.toLowerCase())
       );
+
     if (roleFilter)
-      temp = temp.filter((u) => (u.role || "Customer") === roleFilter);
+      temp = temp.filter((u) => (u.role || "customer") === roleFilter);
+
     setFilteredUsers(temp);
   }, [search, roleFilter, users]);
 
@@ -73,6 +84,7 @@ const Users = () => {
           onChange={(e) => setSearch(e.target.value)}
           className="p-2 border rounded shadow-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
+
         <select
           value={roleFilter}
           onChange={(e) => setRoleFilter(e.target.value)}
@@ -93,10 +105,12 @@ const Users = () => {
               <th className="py-3 px-6">Avatar</th>
               <th className="py-3 px-6">Name</th>
               <th className="py-3 px-6">Email</th>
+              <th className="py-3 px-6">Phone</th>
               <th className="py-3 px-6">Role</th>
               <th className="py-3 px-6">Actions</th>
             </tr>
           </thead>
+
           <tbody>
             {filteredUsers.map((u, idx) => (
               <tr
@@ -104,6 +118,7 @@ const Users = () => {
                 className="border-b hover:bg-gray-50 transition cursor-pointer"
               >
                 <td className="py-3 px-6">{idx + 1}</td>
+
                 <td className="py-3 px-6">
                   <img
                     src={u.profilePic || "https://via.placeholder.com/40?text=U"}
@@ -111,9 +126,15 @@ const Users = () => {
                     className="w-10 h-10 rounded-full object-cover border"
                   />
                 </td>
+
                 <td className="py-3 px-6">{u.name}</td>
                 <td className="py-3 px-6">{u.email}</td>
-                <td className="py-3 px-6 capitalize">{u.role || "Customer"}</td>
+                <td className="py-3 px-6">{u.phone || "N/A"}</td>
+
+                <td className="py-3 px-6 capitalize">
+                  {u.role || "customer"}
+                </td>
+
                 <td className="py-3 px-6">
                   <button
                     onClick={() => openModal(u)}
@@ -138,24 +159,37 @@ const Users = () => {
             >
               ×
             </button>
+
             <div className="flex flex-col items-center gap-4">
               <img
-                src={selectedUser.profilePic || "https://via.placeholder.com/80?text=U"}
+                src={
+                  selectedUser.profilePic ||
+                  "https://via.placeholder.com/80?text=U"
+                }
                 alt="Avatar"
                 className="w-20 h-20 rounded-full object-cover border-2 border-blue-400"
               />
+
               <h2 className="text-2xl font-bold">{selectedUser.name}</h2>
+
               <p className="text-gray-600">{selectedUser.email}</p>
+
               <p className="text-gray-600 capitalize">
                 Role: {selectedUser.role || "Customer"}
               </p>
+
               <p className="text-gray-600">
                 Phone: {selectedUser.phone || "N/A"}
               </p>
+
               <p className="text-gray-600 text-center">
                 Address:{" "}
                 {selectedUser.address
-                  ? `${selectedUser.address.street || ""}, ${selectedUser.address.city || ""}, ${selectedUser.address.state || ""} - ${selectedUser.address.pincode || ""}`
+                  ? `${selectedUser.address.street || ""}, ${
+                      selectedUser.address.city || ""
+                    }, ${selectedUser.address.state || ""} - ${
+                      selectedUser.address.pincode || ""
+                    }`
                   : "N/A"}
               </p>
             </div>
