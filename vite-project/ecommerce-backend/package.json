@@ -13,6 +13,7 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
+    "@heroicons/react": "^2.2.0",
     "axios": "^1.11.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
@@ -27,8 +28,14 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "nodemailer": "^7.0.10",
+    "qrcode": "^1.5.4",
     "react-transliterate": "^1.1.9",
+<<<<<<< HEAD
     "socket.io": "^4.8.1"
+=======
+    "socket.io": "^4.8.1",
+    "twilio": "^5.10.6"
+>>>>>>> f0b32b8050cd2de5a13571b4b7a9a483de636611
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

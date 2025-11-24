@@ -3,17 +3,21 @@ import {
   getProducts,
   getProductsByCategory,
   getProductById,
-  searchProducts, // ✅ add this
+  searchProducts,
 } from "../controllers/productController.js";
 
 const router = express.Router();
 
-// 🛒 Public routes for customers
-router.get("/", getProducts);
+// 🔍 Search route must come first
+router.get("/search", searchProducts);
+
+// 🛒 Get products by category
 router.get("/category/:id", getProductsByCategory);
+
+// 🛍️ Get single product by ID
 router.get("/:id", getProductById);
 
-// 🔍 Search route
-router.get("/search", searchProducts);
+// 🛒 Get all products
+router.get("/", getProducts);
 
 export default router;

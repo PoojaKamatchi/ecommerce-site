@@ -1,3 +1,4 @@
+// models/orderModel.js
 import mongoose from "mongoose";
 
 const orderSchema = new mongoose.Schema(
@@ -18,13 +19,15 @@ const orderSchema = new mongoose.Schema(
       },
     ],
     shippingAddress: { type: String, required: true },
-    paymentMethod: { type: String, default: "Cash on Delivery" },
+    paymentMethod: { type: String, default: "COD" }, // COD or UPI
+    upiTransactionId: { type: String, default: null }, // User input after payment
+    paymentScreenshot: { type: String, default: null }, // Path to uploaded image
     shippingCharge: { type: Number, default: 0 },
     totalAmount: { type: Number, required: true },
     status: {
       type: String,
-      enum: ["Pending", "Processing", "Shipped", "Delivered", "Cancelled"],
-      default: "Pending",
+      enum: ["Pending", "Processing", "Paid", "Shipped", "Delivered", "Cancelled"],
+      default: "Processing",
     },
   },
   { timestamps: true }

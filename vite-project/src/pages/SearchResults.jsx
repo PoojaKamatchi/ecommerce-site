@@ -1,3 +1,4 @@
+// src/pages/SearchResults.jsx
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import axios from "axios";
@@ -7,27 +8,27 @@ import Product from "../components/Product";
 export default function SearchResults() {
   const location = useLocation();
   const { addToCart } = useCart();
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
-  const query = new URLSearchParams(location.search).get("query");
+  const query = new URLSearchParams(location.search).get("query") || "";
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
   useEffect(() => {
     const fetchProducts = async () => {
       setLoading(true);
       setError(false);
 
-      if (!query) {
+      if (!query.trim()) {
         setProducts([]);
         setLoading(false);
         return;
       }
 
       try {
-        const res = await axios.get(
-          `${import.meta.env.VITE_API_URL}/api/products/search?query=${query}`
-        );
+        const res = await axios.get(`${API_URL}/api/products/search?query=${encodeURIComponent(query.trim())}`);
         setProducts(Array.isArray(res.data) ? res.data : []);
       } catch (err) {
         console.error("Error fetching products:", err);
@@ -39,10 +40,9 @@ export default function SearchResults() {
     };
 
     fetchProducts();
-  }, [query]);
+  }, [query, API_URL]);
 
   if (loading) {
-    // 🔹 Skeleton UI while loading
     return (
       <div className="p-4 max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
         {[...Array(8)].map((_, idx) => (
@@ -52,15 +52,13 @@ export default function SearchResults() {
     );
   }
 
-  if (error)
-    return (
-      <p className="text-center p-4 text-red-600">
-        Failed to fetch products. Backend might not be connected.
-      </p>
-    );
+  if (error) {
+    return <p className="text-center p-4 text-red-600">Failed to fetch products. Backend might not be connected.</p>;
+  }
 
-  if (!query)
+  if (!query.trim()) {
     return <p className="text-center p-4 text-gray-600">Please enter a search query.</p>;
+  }
 
   return (
     <div className="p-4 max-w-7xl mx-auto">

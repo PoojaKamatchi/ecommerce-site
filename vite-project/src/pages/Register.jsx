@@ -1,101 +1,61 @@
 import React, { useState } from "react";
+import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar.jsx";
-import Footer from "../components/Footer.jsx";
-
-import { ToastContainer, toast } from "react-toastify";
+import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 export default function Register() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: "", email: "", password: "" });
-  const [loading, setLoading] = useState(false);
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api/users";
 
-  const handleChange = (e) =>
-    setForm({ ...form, [e.target.name]: e.target.value.trim() });
+  const [form, setForm] = useState({ name: "", email: "", password: "", otp: "" });
+  const [step, setStep] = useState("register"); // register | verify
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
 
+  const handleRegister = async () => {
+    if (!form.name || !form.email || !form.password) return toast.error("All fields required");
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        toast.success("✅ Registered successfully!");
-        setTimeout(() => navigate("/login"), 1000);
-      } else {
-        toast.error(data.message || "❌ Registration failed");
-      }
+      await axios.post(`${API_URL}/register`, { name: form.name, email: form.email, password: form.password });
+      toast.success("OTP sent to your email");
+      setStep("verify");
     } catch (err) {
-      toast.error("❌ Something went wrong");
-    } finally {
-      setLoading(false);
+      toast.error(err.response?.data?.message || "Registration failed");
+    }
+  };
+
+  const handleVerify = async () => {
+    if (!form.email || !form.otp) return toast.error("Email & OTP required");
+    try {
+      await axios.post(`${API_URL}/verify-otp`, { email: form.email, otp: form.otp });
+      toast.success("Email verified! You can login now");
+      navigate("/login");
+    } catch (err) {
+      toast.error(err.response?.data?.message || "OTP verification failed");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <ToastContainer />
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white p-8 rounded shadow-md w-full max-w-md space-y-4"
-      >
-        <h2 className="text-2xl font-bold text-center text-indigo-600 mb-6">
-          Register
-        </h2>
-        <input
-          type="text"
-          name="name"
-          value={form.name}
-          onChange={handleChange}
-          placeholder="Full Name"
-          required
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="email"
-          name="email"
-          value={form.email}
-          onChange={handleChange}
-          placeholder="Email"
-          required
-          className="w-full p-2 border rounded"
-        />
-        <input
-          type="password"
-          name="password"
-          value={form.password}
-          onChange={handleChange}
-          placeholder="Password"
-          required
-          className="w-full p-2 border rounded"
-        />
-        <button
-          type="submit"
-          disabled={loading}
-          className={`w-full py-2 rounded-lg ${
-            loading ? "bg-gray-400 text-white" : "bg-indigo-600 text-white"
-          }`}
-        >
-          {loading ? "Registering..." : "Register"}
-        </button>
-        <p className="text-center mt-4">
-          Already have an account?{" "}
-          <span
-            onClick={() => navigate("/login")}
-            className="text-indigo-600 font-medium hover:underline cursor-pointer"
-          >
-            Login
-          </span>
-        </p>
-      </form>
+      <div className="bg-white p-8 rounded shadow-md w-full max-w-md space-y-4">
+        <h2 className="text-2xl font-bold text-center">{step === "register" ? "Register" : "Verify OTP"}</h2>
+        {step === "register" && (
+          <>
+            <input name="name" value={form.name} onChange={handleChange} placeholder="Full Name" className="w-full p-2 border rounded" />
+            <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded" />
+            <input type="password" name="password" value={form.password} onChange={handleChange} placeholder="Password" className="w-full p-2 border rounded" />
+            <button onClick={handleRegister} className="w-full py-2 bg-indigo-600 text-white rounded">Register</button>
+          </>
+        )}
+        {step === "verify" && (
+          <>
+            <input name="email" value={form.email} onChange={handleChange} placeholder="Email" className="w-full p-2 border rounded" />
+            <input name="otp" value={form.otp} onChange={handleChange} placeholder="Enter OTP" className="w-full p-2 border rounded" />
+            <button onClick={handleVerify} className="w-full py-2 bg-green-600 text-white rounded">Verify OTP</button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,199 +1,195 @@
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
+import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
-import Admin from "../models/adminModel.js";
-import sendEmail from "../utils/sendEmail.js";
+import { generateToken } from "../utils/generateToken.js";
+import nodemailer from "nodemailer";
 
-// Generate JWT
-const generateToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRES_IN });
+// ✅ Email transporter setup
+const transporter = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
 
-// ==========================
-// USER AUTH (unchanged)
-// ==========================
-export const registerUser = async (req, res) => {
-  try {
-    const { name, email, password, mobile } = req.body;
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: "User already exists" });
+// ========================
+// 1️⃣ Register new user & send OTP
+// ========================
+export const registerUser = asyncHandler(async (req, res) => {
+  const { name, email, password } = req.body;
+  if (!name || !email || !password) {
+    res.status(400);
+    throw new Error("Please provide all required fields");
+  }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword, mobile });
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    res.status(400);
+    throw new Error("User already exists with this email");
+  }
 
-    res.status(201).json({
-      message: "User registered successfully",
-      token: generateToken(user._id),
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  const user = await User.create({ name, email, password, otp, otpExpire });
+
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Verify your Email OTP",
+    html: `<p>Hello ${name},</p><p>Your OTP for registration is <b>${otp}</b>. It will expire in 10 minutes.</p>`,
+  });
+
+  res.status(201).json({ message: "OTP sent to your email", userId: user._id });
+});
+
+// ========================
+// 2️⃣ Verify OTP
+// ========================
+export const verifyUserOtp = asyncHandler(async (req, res) => {
+  const { userId, otp } = req.body;
+
+  const user = await User.findById(userId);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  if (user.otp !== otp || user.otpExpire < Date.now()) {
+    res.status(400);
+    throw new Error("Invalid or expired OTP");
+  }
+
+  user.otp = undefined;
+  user.otpExpire = undefined;
+  await user.save();
+
+  const token = generateToken(user._id);
+  res.json({ message: "OTP verified successfully", token });
+});
+
+// ========================
+// 3️⃣ Login user
+// ========================
+export const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ email });
+
+  if (user && (await user.matchPassword(password))) {
+    const token = generateToken(user._id);
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      token,
     });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to register user" });
+  } else {
+    res.status(401);
+    throw new Error("Invalid email or password");
   }
-};
+});
 
-export const loginUser = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ message: "User not found" });
+// ========================
+// 4️⃣ Forgot password (send OTP)
+// ========================
+export const forgotUserPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+  const user = await User.findOne({ email });
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
-
-    res.json({ message: "Login successful", token: generateToken(user._id), user });
-  } catch (err) {
-    res.status(500).json({ message: "Failed to login" });
+  if (!user) {
+    res.status(404);
+    throw new Error("No user found with this email");
   }
-};
 
-// ==========================
-// ADMIN LOGIN (Request OTP)
-// ==========================
-export const adminLogin = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpire = Date.now() + 10 * 60 * 1000;
 
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) return res.status(401).json({ message: "Invalid credentials" });
+  user.otp = otp;
+  user.otpExpire = otpExpire;
+  await user.save();
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    admin.otp = otp;
-    admin.otpExpire = Date.now() + 10 * 60 * 1000; // 10 minutes
-    await admin.save();
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to: email,
+    subject: "Password Reset OTP",
+    html: `<p>Hello ${user.name},</p><p>Your OTP to reset password is <b>${otp}</b>. It will expire in 10 minutes.</p>`,
+  });
 
-    const message = `
-      <h3>OTP for Admin Login</h3>
-      <p>Your OTP is: <b>${otp}</b></p>
-      <p>It will expire in 10 minutes.</p>
-    `;
-    await sendEmail({ to: admin.email, subject: "Admin OTP", html: message });
+  res.json({ message: "OTP sent to your email", userId: user._id });
+});
 
-    res.json({ message: "OTP sent to your email" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to send OTP" });
+// ========================
+// 5️⃣ Reset password
+// ========================
+export const resetUserPassword = asyncHandler(async (req, res) => {
+  const { userId, otp, newPassword } = req.body;
+  const user = await User.findById(userId);
+
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
   }
-};
 
-// ==========================
-// VERIFY OTP & LOGIN
-// ==========================
-export const verifyAdminOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-    const admin = await Admin.findOne({ email });
-
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
-    if (!admin.otp || !admin.otpExpire) return res.status(400).json({ message: "No OTP requested" });
-
-    if (admin.otp !== otp || admin.otpExpire < Date.now()) {
-      return res.status(400).json({ message: "Invalid or expired OTP" });
-    }
-
-    admin.otp = undefined;
-    admin.otpExpire = undefined;
-    await admin.save();
-
-    res.json({ message: "Login successful", token: generateToken(admin._id), admin });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "OTP verification failed" });
+  if (user.otp !== otp || user.otpExpire < Date.now()) {
+    res.status(400);
+    throw new Error("Invalid or expired OTP");
   }
-};
 
-// ==========================
-// ADMIN PASSWORD RESET
-// ==========================
-export const forgotAdminPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-    const admin = await Admin.findOne({ email });
-    if (!admin) return res.status(404).json({ message: "Admin not found" });
+  user.password = newPassword;
+  user.otp = undefined;
+  user.otpExpire = undefined;
+  await user.save();
 
-    const resetToken = crypto.randomBytes(20).toString("hex");
-    const hashedToken = crypto.createHash("sha256").update(resetToken).digest("hex");
+  res.json({ message: "Password reset successfully" });
+});
 
-    admin.resetPasswordToken = hashedToken;
-    admin.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
-    await admin.save();
+// ========================
+// 6️⃣ Get user profile
+// ========================
+export const getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id).select("-password");
+  if (!user) throw new Error("User not found");
+  res.json(user);
+});
 
-    const resetUrl = `${process.env.FRONTEND_URL}/admin/reset-password/${resetToken}`;
-    const message = `
-      <h3>Password Reset Request</h3>
-      <p>Click below link to reset:</p>
-      <a href="${resetUrl}" target="_blank">${resetUrl}</a>
-      <p>This link will expire in 10 minutes.</p>
-    `;
-    await sendEmail({ to: admin.email, subject: "Admin Password Reset", html: message });
-
-    res.json({ message: "Password reset link sent to your email" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error sending reset email" });
+// ========================
+// 7️⃣ Update user profile (name, phone, profilePic, address, location)
+// ========================
+export const updateUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
   }
-};
 
-export const resetAdminPassword = async (req, res) => {
-  try {
-    const { token } = req.params;
-    const { password } = req.body;
+  const { name, phone, profilePic, address, location } = req.body;
 
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-    const admin = await Admin.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
+  if (name) user.name = name;
+  if (phone) user.phone = phone;
+  if (profilePic) user.profilePic = profilePic;
+  if (address) user.address = address;
+  if (location) user.location = location;
 
-    if (!admin) return res.status(400).json({ message: "Invalid or expired token" });
+  await user.save();
+  res.json({ message: "Profile updated successfully" });
+});
 
-    admin.password = await bcrypt.hash(password, 10);
-    admin.resetPasswordToken = undefined;
-    admin.resetPasswordExpire = undefined;
-    await admin.save();
-
-    res.json({ message: "Password reset successful" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error during password reset" });
+// ========================
+// 8️⃣ Update only address & location
+// ========================
+export const updateUserAddress = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user._id);
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
   }
-};
 
-// ==========================
-// REGISTER NEW ADMIN (only by logged-in admin)
-// ==========================
-export const registerAdmin = async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+  const { street, city, state, pincode, lat, lng } = req.body;
 
-    // Only allow if logged-in admin
-    if (!req.admin) {
-      return res.status(401).json({ message: "Not authorized. Only admin can add another admin." });
-    }
+  user.address = { street, city, state, pincode };
+  user.location = lat && lng ? { lat, lng } : null;
 
-    const existingAdmin = await Admin.findOne({ email });
-    if (existingAdmin) return res.status(400).json({ message: "Admin already exists" });
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newAdmin = await Admin.create({ name, email, password: hashedPassword });
-
-    res.status(201).json({ message: "New admin registered successfully", admin: newAdmin });
-  } catch (err) {
-    console.error("Admin Register Error:", err.message);
-    res.status(500).json({ message: "Failed to register admin" });
-  }
-};
-
-// ==========================
-// GET ALL USERS (Admin Only)
-// ==========================
-export const getAllUsers = async (req, res) => {
-  try {
-    const users = await User.find().select("-password");
-    res.json(users);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch users" });
-  }
-};
+  await user.save();
+  res.json({ message: "Address updated successfully" });
+});

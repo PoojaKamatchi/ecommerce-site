@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useParams } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import axios from "axios";
 
 const PaymentPage = () => {
   const { orderId } = useParams();
-  const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
@@ -26,68 +25,42 @@ const PaymentPage = () => {
     fetchOrder();
   }, [orderId]);
 
-  const handlePayment = async () => {
-    try {
-      const token = localStorage.getItem("authToken");
-
-      // Create Razorpay order on backend
-      const res = await axios.post(
-        `${API_URL}/api/payment/create-order`,
-        { amount: order.totalAmount * 100, currency: "INR" },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY,
-        amount: res.data.amount,
-        currency: res.data.currency,
-        name: "Your Store",
-        description: "Order Payment",
-        order_id: res.data.id,
-        handler: async function (response) {
-          // Confirm payment with backend
-          await axios.put(
-            `${API_URL}/api/orders/${orderId}/pay`,
-            {
-              paymentId: response.razorpay_payment_id,
-              orderId: response.razorpay_order_id,
-              signature: response.razorpay_signature,
-            },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          toast.success("Payment Successful!");
-          navigate(`/order-success/${orderId}`);
-        },
-        prefill: {
-          name: order.name,
-          contact: order.mobile,
-        },
-        theme: { color: "#3399cc" },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err) {
-      console.error(err);
-      toast.error("Payment failed");
-    }
+  const handleUPIPayment = (upiId) => {
+    if (!order) return;
+    const upiLink = `upi://pay?pa=${upiId}&pn=MyStoreName&am=${order.totalAmount}&cu=INR`;
+    window.open(upiLink, "_blank");
+    toast.info("Complete the payment in your UPI app and enter transaction ID in checkout.", { autoClose: 5000 });
   };
 
-  if (!order) return <p className="text-center mt-20">Loading order details...</p>;
+  if (!order) {
+    return (
+      <div className="flex items-center justify-center h-screen text-indigo-600 font-semibold">
+        Loading payment details...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <ToastContainer position="top-right" autoClose={3000} />
       <div className="bg-white p-6 rounded-xl shadow-lg max-w-md w-full text-center">
-        <h2 className="text-2xl font-bold text-indigo-700 mb-4">Complete Your Payment</h2>
-        <p className="text-gray-700 mb-2">Order ID: <strong>{orderId}</strong></p>
-        <p className="text-gray-700 mb-4">Total Amount: <strong>₹ {order.totalAmount}</strong></p>
-        <button
-          onClick={handlePayment}
-          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-lg transition"
-        >
-          Pay Now
+        <h2 className="text-2xl font-bold text-indigo-700 mb-4">Pay Your Order</h2>
+        <p className="text-gray-700 mb-2">Order ID: <strong>{order._id}</strong></p>
+        <p className="text-gray-700 mb-4">Amount: <strong>₹ {order.totalAmount}</strong></p>
+
+        <button onClick={() => handleUPIPayment("mybusiness@upi")}
+          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded-lg mb-3 w-full">
+          Pay via GPay
         </button>
+
+        <button onClick={() => handleUPIPayment("mybusiness@paytm")}
+          className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-6 py-2 rounded-lg w-full">
+          Pay via Paytm
+        </button>
+
+        <p className="mt-4 text-sm text-gray-600">
+          After payment, enter your transaction ID in checkout to confirm order.
+        </p>
       </div>
     </div>
   );

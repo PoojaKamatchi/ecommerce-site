@@ -1,20 +1,33 @@
+// controllers/orderController.js
 import Order from "../models/orderModel.js";
-import Cart from "../models/cartModel.js"; // ✅ import Cart to clear it
+import Cart from "../models/cartModel.js";
+import path from "path";
+import fs from "fs";
 
-// Create order
+// Create Order
+// controllers/orderController.js (replace createOrder function with this)
 export const createOrder = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { name, mobile, address, cartItems, totalAmount, shippingCharge, paymentMethod } = req.body;
 
-    if (!cartItems || cartItems.length === 0) {
+    // Defensive parsing: cartItems might be a JSON string (if client sent wrong headers)
+    let { name, mobile, address, cartItems, totalAmount, paymentMethod, shippingCharge = 0 } = req.body;
+
+    if (typeof cartItems === "string") {
+      try {
+        cartItems = JSON.parse(cartItems);
+      } catch (e) {
+        cartItems = [];
+      }
+    }
+
+    if (!Array.isArray(cartItems) || cartItems.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // Ensure product names are strings
-    const orderItems = cartItems.map(item => ({
+    const orderItems = cartItems.map((item) => ({
       productId: item.product?._id || item.productId,
-      name: typeof item.name === "string" ? item.name : item.product?.name || "Unnamed Product",
+      name: item.name || item.product?.name || "Unnamed Product",
       price: item.price || item.product?.price || 0,
       quantity: item.quantity || 1,
     }));
@@ -28,13 +41,10 @@ export const createOrder = async (req, res) => {
       totalAmount,
       shippingCharge,
       paymentMethod: paymentMethod || "COD",
-      status: "Processing",
-      createdAt: new Date(), // ✅ timestamp
+      status: paymentMethod === "UPI" ? "Pending" : "Processing",
     });
 
     await newOrder.save();
-
-    // ✅ Clear user's cart in backend
     await Cart.findOneAndUpdate({ user: userId }, { items: [] });
 
     res.status(201).json({ message: "Order created successfully", order: newOrder });
@@ -44,11 +54,12 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// Get user orders
+
+// Get User Orders
 export const getUserOrders = async (req, res) => {
   try {
     const orders = await Order.find({ user: req.user._id })
-      .populate("orderItems.productId", "name price")
+      .populate({ path: "orderItems.productId", select: "name price" })
       .sort({ createdAt: -1 });
 
     res.json(orders);
@@ -57,7 +68,7 @@ export const getUserOrders = async (req, res) => {
   }
 };
 
-// Cancel order
+// Cancel Order
 export const cancelOrder = async (req, res) => {
   try {
     const { id } = req.params;
@@ -65,47 +76,38 @@ export const cancelOrder = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order not found" });
     if (order.user.toString() !== req.user._id.toString())
-      return res.status(403).json({ message: "Not authorized to cancel this order" });
-    if (order.status === "Delivered")
-      return res.status(400).json({ message: "Delivered orders cannot be cancelled" });
+      return res.status(403).json({ message: "Not authorized" });
+    if (order.status !== "Processing" && order.status !== "Pending")
+      return res.status(400).json({ message: "Only Processing orders can be cancelled" });
 
     order.status = "Cancelled";
     await order.save();
-
     res.json({ message: "Order cancelled successfully", order });
   } catch (err) {
     res.status(500).json({ message: "Cannot cancel order", error: err.message });
   }
 };
 
-// Get all orders (admin)
-export const getAllOrders = async (req, res) => {
+// Upload Payment Screenshot (for UPI)
+export const uploadPaymentScreenshot = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate("user", "name email")
-      .populate("orderItems.productId", "name price")
-      .sort({ createdAt: -1 });
-
-    res.json(orders);
-  } catch (err) {
-    res.status(500).json({ message: "Failed to fetch orders", error: err.message });
-  }
-};
-
-// Update order status (admin)
-export const updateOrderStatus = async (req, res) => {
-  try {
-    const { status } = req.body;
     const { id } = req.params;
-
     const order = await Order.findById(id);
     if (!order) return res.status(404).json({ message: "Order not found" });
+    if (order.user.toString() !== req.user._id.toString())
+      return res.status(403).json({ message: "Not authorized" });
 
-    order.status = status;
+    if (!req.file) return res.status(400).json({ message: "Screenshot is required" });
+
+    // Save screenshot path
+    order.paymentScreenshot = `/uploads/${req.file.filename}`;
+    order.upiTransactionId = req.body.transactionId || null;
+    order.status = "Processing"; // now admin can verify
     await order.save();
 
-    res.json({ message: "Order status updated", order });
+    res.json({ message: "Payment screenshot uploaded", order });
   } catch (err) {
-    res.status(500).json({ message: "Failed to update status", error: err.message });
+    console.error(err);
+    res.status(500).json({ message: "Upload failed", error: err.message });
   }
 };
