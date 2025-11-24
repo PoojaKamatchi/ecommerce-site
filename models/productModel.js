@@ -12,7 +12,7 @@ const productSchema = new mongoose.Schema(
     image: { type: String },
     category: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "Category", // ✅ Link to Category model
+      ref: "Category",
       required: true,
     },
   },

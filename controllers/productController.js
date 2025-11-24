@@ -1,7 +1,7 @@
 import Product from "../models/productModel.js";
 import mongoose from "mongoose";
 
-// 🛍️ Get all products (for Customer)
+// 🛍️ Get all products
 export const getProducts = async (req, res) => {
   try {
     const products = await Product.find().populate("category", "name");
@@ -20,12 +20,12 @@ export const getProducts = async (req, res) => {
 
 // 🆕 Get products by Category
 export const getProductsByCategory = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ message: "Invalid category ID" });
-    }
+  const { id } = req.params;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid category ID" });
+  }
 
+  try {
     const products = await Product.find({ category: id }).populate("category", "name");
     const formatted = products.map((p) => ({
       ...p._doc,
@@ -33,7 +33,6 @@ export const getProductsByCategory = async (req, res) => {
         ? p.image
         : `${req.protocol}://${req.get("host")}${p.image}`,
     }));
-
     res.json(formatted);
   } catch (error) {
     console.error("🔥 Error fetching products by category:", error);
@@ -43,8 +42,14 @@ export const getProductsByCategory = async (req, res) => {
 
 // 🆕 Get single product by ID
 export const getProductById = async (req, res) => {
+  const { id } = req.params;
+
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid product ID" });
+  }
+
   try {
-    const product = await Product.findById(req.params.id).populate("category", "name");
+    const product = await Product.findById(id).populate("category", "name");
     if (!product) return res.status(404).json({ message: "Product not found" });
 
     const imagePath = product.image?.startsWith("http")
@@ -60,13 +65,12 @@ export const getProductById = async (req, res) => {
 
 // 🔍 Search products by name
 export const searchProducts = async (req, res) => {
-  const { query } = req.query; // get ?query= from URL
-
-  if (!query) return res.status(400).json({ message: "Query is required" });
+  const { query } = req.query;
+  if (!query || query.trim() === "") return res.json([]);
 
   try {
     const products = await Product.find({
-      "name.en": { $regex: query, $options: "i" }, // case-insensitive search in English name
+      "name.en": { $regex: query.trim(), $options: "i" },
     }).populate("category", "name");
 
     const formatted = products.map((p) => ({
@@ -79,6 +83,6 @@ export const searchProducts = async (req, res) => {
     res.json(formatted);
   } catch (error) {
     console.error("🔥 Error searching products:", error);
-    res.status(500).json({ message: "Failed to search products" });
+    res.status(500).json({ message: "Failed to search products", error: error.message });
   }
 };

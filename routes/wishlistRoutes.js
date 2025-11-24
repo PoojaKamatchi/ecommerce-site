@@ -5,11 +5,13 @@ import {
   addToWishlist,
   removeFromWishlist,
 } from "../controllers/wishlistController.js";
+import { protect } from "../middleware/authMiddleware.js"; // your JWT middleware
 
 const router = express.Router();
 
-router.get("/:userId", getWishlist);
-router.post("/add", addToWishlist);
-router.delete("/remove/:productId", removeFromWishlist);
+// ✅ Protect all wishlist routes
+router.get("/", protect, getWishlist);
+router.post("/add", protect, addToWishlist);
+router.delete("/remove/:productId", protect, removeFromWishlist);
 
 export default router;

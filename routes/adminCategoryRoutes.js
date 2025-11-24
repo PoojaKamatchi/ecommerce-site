@@ -1,24 +1,19 @@
 import express from "express";
-import upload from "../middleware/uploadCategory.js"; // your multer middleware
+import upload from "../middleware/uploadCategory.js";
 import {
   getCategories,
   addCategory,
   updateCategory,
   deleteCategory,
 } from "../controllers/adminCategoryController.js";
+import { adminProtect } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// ✅ Get all categories
-router.get("/", getCategories);
-
-// ✅ Add new category (with image)
-router.post("/", upload.single("image"), addCategory);
-
-// ✅ Update category (replace old image if new one uploaded)
-router.put("/:id", upload.single("image"), updateCategory);
-
-// ✅ Delete category
-router.delete("/:id", deleteCategory);
+// IMPORTANT: protect admin endpoints
+router.get("/", adminProtect, getCategories);
+router.post("/", adminProtect, upload.single("image"), addCategory);
+router.put("/:id", adminProtect, upload.single("image"), updateCategory);
+router.delete("/:id", adminProtect, deleteCategory);
 
 export default router;
